@@ -127,7 +127,7 @@ class EventCog(Cog, name="Events"):
 
         elif not user.bot and react.message.id in self.reminder_messages:
             reminder = self.reminder_messages[react.message.id]
-            if react.emoji == OPT_IN_EMOJI:
+            if react.emoji == self.OPT_IN_EMOJI:
                 reminder.member_mentions.remove(user)
 
     async def prompt_date(self, ctx, author):
@@ -252,7 +252,7 @@ class EventCog(Cog, name="Events"):
         title = []
         parsed_time = None
         args = list(args)
-        for _ in args:
+        for i in range(len(args)):
             with suppress(ValueError):
                 # print(" ".join(args))
                 parsed_time = dateutil.parser.parse(' '.join(args))
