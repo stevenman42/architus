@@ -1,6 +1,7 @@
 import pytz
 import dateutil.parser
 import re
+import discord
 from unidecode import unidecode
 from contextlib import suppress
 from discord.ext.commands import Cog
