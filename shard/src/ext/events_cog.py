@@ -6,6 +6,12 @@ from contextlib import suppress
 from discord.ext.commands import Cog
 from discord.ext import commands
 
+class ReminderEvent:
+    def __init__(self, msg, title, time_str):
+        self.msg = msg
+        self.title_str = title
+        self.parsed_time = time_str
+
 
 class ScheduleEvent(object):
     def __init__(self, msg, title, time_str):
