@@ -154,7 +154,7 @@ class EventCog(Cog, name="Events"):
             print("Not scheduling cause event bot exists.")
             return
 
-        title, parsed_time = await self.parse_time(ctx.guild.region, args)
+        title, parsed_time = await self.parse_time(ctx, args)
 
         if len(title) == 0:
             title_str = await self.prompt_title(ctx, ctx.author)
@@ -245,8 +245,8 @@ class EventCog(Cog, name="Events"):
             i += 1
         return text
 
-    async def parse_time(self, region, args):
-        tz = pytz.timezone(self.get_timezone(region))
+    async def parse_time(self, ctx, args):
+        tz = pytz.timezone(self.get_timezone(ctx.guild.region))
         # ct = datetime.datetime.now(tz=tz)
         title = []
         parsed_time = None
