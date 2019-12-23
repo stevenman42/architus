@@ -126,7 +126,7 @@ class EventCog(Cog, name="Events"):
 
         elif not user.bot and react.message.id in self.reminder_messages:
             reminder = self.reminder_messages[react.message.id]
-            if react.emoji = OPT_IN_EMOJI:
+            if react.emoji == OPT_IN_EMOJI:
                 reminder.member_mentions.remove(user)
 
     async def prompt_date(self, ctx, author):
@@ -154,7 +154,7 @@ class EventCog(Cog, name="Events"):
             print("Not scheduling cause event bot exists.")
             return
 
-        title, parsed_time = parse_time(ctx.guild.region, args)
+        title, parsed_time = await parse_time(ctx.guild.region, args)
 
         if len(title) == 0:
             title_str = await self.prompt_title(ctx, ctx.author)
@@ -199,7 +199,7 @@ class EventCog(Cog, name="Events"):
         '''
 
         clean_args = [arg for arg in args if arg not in (m.mention for m in ctx.message.mentions) and arg not in (r.mention for r in ctx.message.role_mentions)]
-        title, parsed_time = parse_time(ctx, clean_args)
+        title, parsed_time = await parse_time(ctx, clean_args)
         
 
         if ctx.author.id in self.bot.settings[ctx.guild].admin_ids:
@@ -245,7 +245,7 @@ class EventCog(Cog, name="Events"):
             i += 1
         return text
 
-    def parse_time(self, region, args):
+    async def parse_time(self, region, args):
         tz = pytz.timezone(self.get_timezone(region))
         # ct = datetime.datetime.now(tz=tz)
         title = []
