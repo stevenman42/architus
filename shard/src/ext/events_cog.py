@@ -11,7 +11,10 @@ class ReminderEvent:
         self.msg = msg
         self.title_str = title
         self.parsed_time = time_str
-
+        self.in_channel = False
+        self.member_mentions = set()
+        self.role_mentions = []
+    
 
 class ScheduleEvent(object):
     def __init__(self, msg, title, time_str):
@@ -39,6 +42,7 @@ class EventCog(Cog, name="Events"):
     YES_EMOJI = '✅'
     NO_EMOJI = '❌'
     MAYBE_EMOJI = '🤷'
+    OPT_IN_EMOJI = '⏲️'
 
     ANSWERS = [
         '\N{DIGIT ZERO}\N{COMBINING ENCLOSING KEYCAP}',
@@ -57,6 +61,7 @@ class EventCog(Cog, name="Events"):
         self.bot = bot
         self.schedule_messages = {}
         self.poll_messages = {}
+        self.reminder_messages = {}
 
     @commands.Cog.listener()
     async def on_reaction_add(self, react, user):
@@ -92,6 +97,15 @@ class EventCog(Cog, name="Events"):
             await react.message.edit(
                 content=self.render_poll_text(event.title, event.options, event.votes))
 
+        elif not user.bot and react.message.id in self.reminder_messages:
+            reminder = self.reminder_messages[react.message.id]
+            if react.emoji == self.OPT_IN_EMOJI:
+            # alarm_reaction = next(r for r in message.reactions if r.emoji == self.OPT_IN_EMOJI)
+                reminder.member_mentions.update(await react.users().flatten())
+
+
+            
+
     @commands.Cog.listener()
     async def on_reaction_remove(self, react, user):
 
@@ -110,56 +124,37 @@ class EventCog(Cog, name="Events"):
         elif not user.bot and react.message.id in self.poll_messages:
             await self.on_reaction_add(react, user)
 
+        elif not user.bot and react.message.id in self.reminder_messages:
+            reminder = self.reminder_messages[react.message.id]
+            if react.emoji = OPT_IN_EMOJI:
+                reminder.member_mentions.remove(user)
+
     async def prompt_date(self, ctx, author):
-        await ctx.channel.send("what time?")
+        await ctx.channel.send("What time?")
         time_msg = await self.bot.wait_for('message', timeout=30, check=lambda m: m.author == author)
         try:
             return dateutil.parser.parse(time_msg.clean_content)
         except Exception:
-            await ctx.channel.send("not sure what that means")
+            await ctx.channel.send("Not sure what that means.")
             return None
 
     async def prompt_title(self, ctx, author):
-        await ctx.channel.send("what event?")
+        await ctx.channel.send("What event?")
         title_msg = await self.bot.wait_for('message', timeout=30, check=lambda m: m.author == author)
         return title_msg.clean_content or None
 
     @commands.command()
-    async def schedule(self, ctx, *argst):
+    async def schedule(self, ctx, *args):
         '''
         Start an event poll.
         Timezone is based on your servers voice zone.
         '''
-        args = list(argst)
-        # print(args)
         # event bot's id
         if ctx.guild.get_member(476042677440479252):
-            print("not scheduling cause event bot exists")
+            print("Not scheduling cause event bot exists.")
             return
-        region = ctx.guild.region
-        tz = pytz.timezone(self.get_timezone(region))
-        # ct = datetime.datetime.now(tz=tz)
-        title = []
-        parsed_time = None
-        for i in range(len(args)):
-            with suppress(ValueError):
-                # print(" ".join(args))
-                parsed_time = dateutil.parser.parse(' '.join(args))
-                # parsed_time = tz.localize(parsed_time)
-                break
-            with suppress(ValueError):
-                # print(" ".join(args))
-                parsed_time = dateutil.parser.parse(' '.join(args[:-1]))
-                # parsed_time = tz.localize(parsed_time)
-                # print("deleted something from the end")
-                break
-            title.append(args[0])
-            del args[0]
-        else:
-            parsed_time = await self.prompt_date(ctx, ctx.author)
-            if not parsed_time:
-                return
-            parsed_time = tz.localize(parsed_time)
+
+        title, parsed_time = parse_time(ctx.guild.region, args)
 
         if len(title) == 0:
             title_str = await self.prompt_title(ctx, ctx.author)
@@ -178,7 +173,7 @@ class EventCog(Cog, name="Events"):
     async def poll(self, ctx, *args):
         '''
         Starts a poll with some pretty formatting.
-        Supports up to 10 options
+        Supports up to 10 options.
         '''
         pattern = re.compile(r'.poll (?P<title>(?:\S*[^\s,] )+)(?P<options>.*$)')
         match = pattern.search(unidecode(ctx.message.content))
@@ -195,6 +190,28 @@ class EventCog(Cog, name="Events"):
             await msg.add_reaction(self.ANSWERS[i])
 
         self.poll_messages[msg.id] = PollEvent(msg, title, options, votes)
+
+    @commands.command()
+    async def reminder(self, ctx, *args):
+        '''
+        Sets up a scheduled reminder that other users can opt into.
+        Can be set to send the reminder in a public channel or in private messages.
+        '''
+
+        clean_args = [arg for arg in args if arg not in (m.mention for m in ctx.message.mentions) and arg not in (r.mention for r in ctx.message.role_mentions)]
+        title, parsed_time = parse_time(ctx, clean_args)
+        
+
+        if ctx.author.id in self.bot.settings[ctx.guild].admin_ids:
+            member_list = set(ctx.message.mentions)
+            mention_list = ctx.message.mentions + ctx.message.role_mentions
+        else:
+            pass
+        
+        em = discord.Embed(title="8)", description="hi", colour=0x111111)
+        message = await ctx.send(embed=em)
+        reminder = ReminderEvent(message, title, parsed_time)
+        self.reminder_messages[message.id] = reminder
 
     def get_timezone(self, region):
         region = str(region)
@@ -228,6 +245,33 @@ class EventCog(Cog, name="Events"):
             i += 1
         return text
 
+    def parse_time(self, region, args):
+        tz = pytz.timezone(self.get_timezone(region))
+        # ct = datetime.datetime.now(tz=tz)
+        title = []
+        parsed_time = None
+        args = list(args)
+        for _ in args:
+            with suppress(ValueError):
+                # print(" ".join(args))
+                parsed_time = dateutil.parser.parse(' '.join(args))
+                # parsed_time = tz.localize(parsed_time)
+                break
+            with suppress(ValueError):
+                # print(" ".join(args))
+                parsed_time = dateutil.parser.parse(' '.join(args[:-1]))
+                # parsed_time = tz.localize(parsed_time)
+                # print("deleted something from the end")
+                break
+            title.append(args[0])
+            del args[0]
+        else:
+            parsed_time = await self.prompt_date(ctx, ctx.author)
+            if not parsed_time:
+                return
+            parsed_time = tz.localize(parsed_time)
+        return title, parsed_time
+    
 
 def setup(bot):
     bot.add_cog(EventCog(bot))

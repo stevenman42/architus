@@ -18,7 +18,7 @@ async def quote(ctx, message: discord.Message):
         elif message.attachments:
             em.set_image(url=message.attachments[0].url)
     except (IndexError, KeyError):
-        print("tried to attach image, couldn't")
+        print("Tried to attach image, couldn't.")
     await ctx.channel.send(embed=em)
 
 
