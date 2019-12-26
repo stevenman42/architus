@@ -15,7 +15,7 @@ class ReminderEvent:
         self.in_channel = False
         self.member_mentions = set()
         self.role_mentions = []
-    
+
 
 class ScheduleEvent(object):
     def __init__(self, msg, title, time_str):
@@ -105,7 +105,7 @@ class EventCog(Cog, name="Events"):
                 reminder.member_mentions.update(await react.users().flatten())
 
 
-            
+
 
     @commands.Cog.listener()
     async def on_reaction_remove(self, react, user):
@@ -201,18 +201,21 @@ class EventCog(Cog, name="Events"):
 
         clean_args = [arg for arg in args if arg not in (m.mention for m in ctx.message.mentions) and arg not in (r.mention for r in ctx.message.role_mentions)]
         title, parsed_time = await self.parse_time(ctx, clean_args)
-        
 
         if ctx.author.id in self.bot.settings[ctx.guild].admin_ids:
             member_list = set(ctx.message.mentions)
+            role_list = set(ctx.message.role_mentions)
             mention_list = ctx.message.mentions + ctx.message.role_mentions
         else:
-            pass
-        
-        em = discord.Embed(title="8)", description="hi", colour=0x111111)
+            member_list = set()
+            role_list = set()
+            mention_list = []
+
+        self.reminder_messages[message.id] = reminder
+        em = self.render_reminder_text(title, parsed_time, member_list, role_mentions, False)
         message = await ctx.send(embed=em)
         reminder = ReminderEvent(message, title, parsed_time)
-        self.reminder_messages[message.id] = reminder
+
 
     def get_timezone(self, region):
         region = str(region)
@@ -224,6 +227,13 @@ class EventCog(Cog, name="Events"):
             return 'America/Los_Angeles'
         else:
             return 'Etc/UTC'
+
+    def render_reminder_text(self, title_str, parsed_time, members, roles, in_channel):
+        description = parsed_time.strftime("%b %d %I:%M%p %Z\n\n")
+        description += f"People to be reminded: {', '.join([member.nick for member in [ m for m in members if not any(m in r.members for r in roles)]])}\n"
+        description += f"Roles to be reminded: {', '.join([role.mention for role in roles])}"
+        em = discord.Embed(title=title_str, description=description, colour=0x111111)
+        return em
 
     def render_schedule_text(self, title_str, parsed_time, yes, no, maybe):
         return "**__%s__**\n**Time:** %s\n:white_check_mark: Yes (%d): %s\n:x: No (%d): %s\n:shrug: Maybe (%d): %s" % (
@@ -272,7 +282,7 @@ class EventCog(Cog, name="Events"):
                 return
             parsed_time = tz.localize(parsed_time)
         return title, parsed_time
-    
+
 
 def setup(bot):
-    bot.add_cog(EventCog(bot))
+    ot.add_cog(EventCog(bot))
