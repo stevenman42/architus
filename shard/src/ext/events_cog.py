@@ -205,17 +205,15 @@ class EventCog(Cog, name="Events"):
         if ctx.author.id in self.bot.settings[ctx.guild].admin_ids:
             member_list = set(ctx.message.mentions)
             role_list = set(ctx.message.role_mentions)
-            mention_list = ctx.message.mentions + ctx.message.role_mentions
         else:
             member_list = set()
             role_list = set()
-            mention_list = []
 
-        self.reminder_messages[message.id] = reminder
-        em = self.render_reminder_text(title, parsed_time, member_list, role_mentions, False)
+        em = self.render_reminder_text(title, parsed_time, member_list, role_list, False)
         message = await ctx.send(embed=em)
-        reminder = ReminderEvent(message, title, parsed_time)
 
+        reminder = ReminderEvent(message, title, parsed_time) 
+        self.reminder_messages[message.id] = reminder
 
     def get_timezone(self, region):
         region = str(region)
@@ -281,7 +279,7 @@ class EventCog(Cog, name="Events"):
             if not parsed_time:
                 return
             parsed_time = tz.localize(parsed_time)
-        return title, parsed_time
+        return ' '.join(title), parsed_time
 
 
 def setup(bot):
