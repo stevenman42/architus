@@ -13,8 +13,8 @@ class ReminderEvent:
         self.title_str = title
         self.parsed_time = time_str
         self.in_channel = False
-        self.member_mentions = set()
-        self.role_mentions = []
+        self.members = set()
+        self.roles = []
 
 
 class ScheduleEvent(object):
@@ -102,9 +102,9 @@ class EventCog(Cog, name="Events"):
             reminder = self.reminder_messages[react.message.id]
             if react.emoji == self.OPT_IN_EMOJI:
             # alarm_reaction = next(r for r in message.reactions if r.emoji == self.OPT_IN_EMOJI)
-                reminder.member_mentions.update(await react.users().flatten())
-
-
+                reminder.members.update(await react.users().flatten())
+                await reminder.message.edit(
+                    embed=self.render_reminder(reminder.title_str, reminder.parsed_time, reminder.members, reminder.roles, reminder.in_channel))
 
 
     @commands.Cog.listener()
@@ -128,7 +128,9 @@ class EventCog(Cog, name="Events"):
         elif not user.bot and react.message.id in self.reminder_messages:
             reminder = self.reminder_messages[react.message.id]
             if react.emoji == self.OPT_IN_EMOJI:
-                reminder.member_mentions.remove(user)
+                reminder.members.remove(user)
+                await reminder.message.edit(
+                    embed=self.render_reminder(reminder.title_str, reminder.parsed_time, reminder.members, reminder.roles, reminder.in_channel))
 
     async def prompt_date(self, ctx, author):
         await ctx.channel.send("What time?")
@@ -206,13 +208,13 @@ class EventCog(Cog, name="Events"):
             member_list = set(ctx.message.mentions)
             role_list = set(ctx.message.role_mentions)
         else:
-            member_list = set()
+            member_list = set(ctx.message.author)
             role_list = set()
 
         em = self.render_reminder_text(title, parsed_time, member_list, role_list, False)
         message = await ctx.send(embed=em)
 
-        reminder = ReminderEvent(message, title, parsed_time) 
+        reminder = ReminderEvent(message, title, parsed_time)
         self.reminder_messages[message.id] = reminder
 
     def get_timezone(self, region):
@@ -228,7 +230,7 @@ class EventCog(Cog, name="Events"):
 
     def render_reminder_text(self, title_str, parsed_time, members, roles, in_channel):
         description = parsed_time.strftime("%b %d %I:%M%p %Z\n\n")
-        description += f"People to be reminded: {', '.join([member.nick for member in [ m for m in members if not any(m in r.members for r in roles)]])}\n"
+        description += f"People to be reminded: {', '.join([member.mention for member in [m for m in members if not any(m in r.members for r in roles)]])}\n"
         description += f"Roles to be reminded: {', '.join([role.mention for role in roles])}"
         em = discord.Embed(title=title_str, description=description, colour=0x111111)
         return em
@@ -283,4 +285,4 @@ class EventCog(Cog, name="Events"):
 
 
 def setup(bot):
-    ot.add_cog(EventCog(bot))
+    bot.add_cog(EventCog(bot))
