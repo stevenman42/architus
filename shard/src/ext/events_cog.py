@@ -43,7 +43,7 @@ class EventCog(Cog, name="Events"):
     YES_EMOJI = '✅'
     NO_EMOJI = '❌'
     MAYBE_EMOJI = '🤷'
-    OPT_IN_EMOJI = '⏲️'
+    OPT_IN_EMOJI = '⏰'
 
     ANSWERS = [
         '\N{DIGIT ZERO}\N{COMBINING ENCLOSING KEYCAP}',
@@ -103,7 +103,7 @@ class EventCog(Cog, name="Events"):
             if react.emoji == self.OPT_IN_EMOJI:
             # alarm_reaction = next(r for r in message.reactions if r.emoji == self.OPT_IN_EMOJI)
                 reminder.members.update(await react.users().flatten())
-                await reminder.message.edit(
+                await reminder.msg.edit(
                     embed=self.render_reminder(reminder.title_str, reminder.parsed_time, reminder.members, reminder.roles, reminder.in_channel))
 
 
@@ -129,7 +129,7 @@ class EventCog(Cog, name="Events"):
             reminder = self.reminder_messages[react.message.id]
             if react.emoji == self.OPT_IN_EMOJI:
                 reminder.members.remove(user)
-                await reminder.message.edit(
+                await reminder.msg.edit(
                     embed=self.render_reminder(reminder.title_str, reminder.parsed_time, reminder.members, reminder.roles, reminder.in_channel))
 
     async def prompt_date(self, ctx, author):
@@ -208,11 +208,12 @@ class EventCog(Cog, name="Events"):
             member_list = set(ctx.message.mentions)
             role_list = set(ctx.message.role_mentions)
         else:
-            member_list = set(ctx.message.author)
+            member_list = set((ctx.message.author,))
             role_list = set()
 
         em = self.render_reminder_text(title, parsed_time, member_list, role_list, False)
         message = await ctx.send(embed=em)
+        await message.add_reaction(self.OPT_IN_EMOJI)
 
         reminder = ReminderEvent(message, title, parsed_time)
         self.reminder_messages[message.id] = reminder
