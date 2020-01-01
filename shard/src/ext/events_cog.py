@@ -2,10 +2,13 @@ import pytz
 import dateutil.parser
 import re
 import discord
+import json
+from lib.models import Event
 from unidecode import unidecode
 from contextlib import suppress
 from discord.ext.commands import Cog
 from discord.ext import commands
+
 
 class ReminderEvent:
     def __init__(self, msg, title, time_str):
@@ -64,6 +67,18 @@ class EventCog(Cog, name="Events"):
         self.poll_messages = {}
         self.reminder_messages = {}
 
+    def store_reminder_in_database(self, guild, reminder):
+        data = {
+            'title_str': reminder.title_str,
+            'parsed_time': reminder.parsed_time.isoformat(),
+            'in_channel': reminder.in_channel,
+            'members': [m.id for m in reminder.members],
+            'roles': [r.id for r in reminder.roles]
+        }
+        event = Event(guild.id, reminder.msg.id, json.dumps(data), reminder.parsed_time, 0)
+        self.bot.session.add(event)
+        self.bot.session.commit()
+
     @commands.Cog.listener()
     async def on_reaction_add(self, react, user):
         if not user.bot and react.message.id in self.schedule_messages:
@@ -101,15 +116,13 @@ class EventCog(Cog, name="Events"):
         elif not user.bot and react.message.id in self.reminder_messages:
             reminder = self.reminder_messages[react.message.id]
             if react.emoji == self.OPT_IN_EMOJI:
-            # alarm_reaction = next(r for r in message.reactions if r.emoji == self.OPT_IN_EMOJI)
+                # alarm_reaction = next(r for r in message.reactions if r.emoji == self.OPT_IN_EMOJI)
                 reminder.members.update(await react.users().flatten())
                 await reminder.msg.edit(
                     embed=self.render_reminder(reminder.title_str, reminder.parsed_time, reminder.members, reminder.roles, reminder.in_channel))
 
-
     @commands.Cog.listener()
     async def on_reaction_remove(self, react, user):
-
         if not user.bot and react.message.id in self.schedule_messages and False:
             event = self.schedule_messages[react.message.id]
             with suppress(KeyError):
@@ -217,6 +230,7 @@ class EventCog(Cog, name="Events"):
 
         reminder = ReminderEvent(message, title, parsed_time)
         self.reminder_messages[message.id] = reminder
+        self.store_reminder_in_database(ctx.guild, reminder)
 
     def get_timezone(self, region):
         region = str(region)

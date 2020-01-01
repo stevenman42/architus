@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, Float, Text, DateTime
+from sqlalchemy import Column, Integer, BigInteger, SmallInteger, Float, Text, DateTime
 
 Base = declarative_base()
 
@@ -29,6 +29,22 @@ class User(Base):
 
     def as_entry(self):
         return [self.aut_score, self.norm_score, self.nice_score, self.toxic_score, self.awareness_score]
+
+
+class Event(Base):
+    __tablename__ = 'tb_events'
+    guild_id = Column('guild_id', BigInteger, primary_key=True)
+    message_id = Column('message_id', BigInteger, primary_key=True)
+    data = Column('data', Text)
+    expiration_date = Column('expiration_date', DateTime)
+    event_type = Column('event_type', SmallInteger)
+
+    def __init__(self, guild_id, message_id, data, expiration_date, event_type):
+        self.guild_id = guild_id
+        self.message_id = message_id
+        self.data = data
+        self.expiration_date = expiration_date
+        self.event_type = event_type
 
 
 class Admin(Base):
